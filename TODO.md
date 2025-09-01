@@ -18,6 +18,8 @@
 - [ ] Mesafe birim değişimi (m/km)
 - [ ] Arama radiüsünün harita üzerinde görsel gösterimi
 
+### Chrome Tab inda vite  + react + ts yazisindan daha anlamli bir seye degistir. 
+
 ---
 
 ## 🔄 İyileştirmeler
