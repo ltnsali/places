@@ -1,19 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
-import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
-import type { IstanbulPlace, PlaceFilter } from './types/places';
-import { placesService, PLACE_CATEGORIES } from './services/placesService';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { APIProvider, Map, AdvancedMarker, Pin, useMap, type MapMouseEvent } from '@vis.gl/react-google-maps';
+import type { IstanbulPlace, PlaceFilter, Location } from './types/places';
+import { placesService, PLACE_CATEGORIES, DEFAULT_SEARCH_RADIUS } from './services/placesService';
 import PlacesList from './components/PlacesList.tsx';
 import PlaceFilters from './components/PlaceFilters.tsx';
 import LoadingSpinner from './components/LoadingSpinner.tsx';
+import MapControls from './components/MapControls.tsx';
+import SearchRadiusCircle from './components/SearchRadiusCircle.tsx';
 import './App.css';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-// İstanbul merkez koordinatları
-const ISTANBUL_CENTER = {
-  lat: 41.0082,
-  lng: 28.9784
+// Geolocation başarısız olursa kullanılacak fallback konum (İstanbul merkez)
+const FALLBACK_LOCATION: Location = {
+  latitude: 41.0082,
+  longitude: 28.9784
 };
+
+// Arama yarıçapı sınırları (metre)
+const MIN_SEARCH_RADIUS = 500;
+const MAX_SEARCH_RADIUS = 50000;
 
 interface PlaceMarkersProps {
   places: IstanbulPlace[];
@@ -62,44 +68,151 @@ function App() {
   const [selectedPlace, setSelectedPlace] = useState<IstanbulPlace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'manual'>('idle');
+  const [searchRadius, setSearchRadius] = useState<number>(DEFAULT_SEARCH_RADIUS);
   const [filter, setFilter] = useState<PlaceFilter>({
     category: 'all',
     minRating: 4.0,
-    sortBy: 'rating',
+    minUserRatingCount: 100,
+    sortBy: 'userRatingCount',
     sortOrder: 'desc'
   });
 
-  // İlk yükleme - popüler mekanları getir
+  const skipRadiusReload = useRef(true);
+
+  // İlk yükleme - kullanıcı konumunu al
   useEffect(() => {
-    loadInitialPlaces();
+    requestUserLocation();
   }, []);
+
+  // Kullanıcı konumu hazır olduğunda mekanları getir
+  useEffect(() => {
+    if (userLocation) {
+      loadPlacesAtLocation(userLocation, filter.category || 'all');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation]);
+
+  // Arama yarıçapı değiştiğinde mekanları yeniden yükle (debounced)
+  useEffect(() => {
+    if (skipRadiusReload.current) {
+      skipRadiusReload.current = false;
+      return;
+    }
+    if (!userLocation) return;
+    const timer = setTimeout(() => {
+      loadPlacesAtLocation(userLocation, filter.category || 'all');
+    }, 450);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRadius]);
 
   // Filter değiştiğinde mekanları filtrele
   useEffect(() => {
     if (places.length > 0) {
-      const filtered = placesService.filterAndSortPlaces(places, filter);
+      const filtered = placesService.filterAndSortPlaces(places, {
+        ...filter,
+        maxDistanceKm: searchRadius / 1000,
+      });
       setFilteredPlaces(filtered);
+    } else {
+      setFilteredPlaces([]);
     }
-  }, [places, filter]);
+  }, [places, filter, searchRadius]);
 
-  const loadInitialPlaces = async () => {
+  const requestUserLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setLocationStatus('denied');
+      setError('Tarayıcınız konum servisini desteklemiyor. Varsayılan konum kullanılıyor.');
+      setUserLocation(FALLBACK_LOCATION);
+      return;
+    }
+
+    setLocationStatus('requesting');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        setLocationStatus('granted');
+      },
+      (geoError) => {
+        console.warn('Geolocation error:', geoError);
+        setLocationStatus('denied');
+        setError('Konum izni alınamadı. Varsayılan konum kullanılıyor.');
+        setUserLocation(FALLBACK_LOCATION);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  };
+
+  const handleGoToCurrentLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setError('Tarayıcınız konum servisini desteklemiyor.');
+      return;
+    }
+
+    setLocationStatus('requesting');
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        setLocationStatus('granted');
+      },
+      (geoError) => {
+        console.warn('Geolocation error:', geoError);
+        setLocationStatus('denied');
+        setError('Konum bilgisi alınamadı. Lütfen tarayıcı konum izinlerini kontrol edin.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000
+      }
+    );
+  };
+
+  const handleRadiusChange = (newRadius: number) => {
+    const clamped = Math.max(MIN_SEARCH_RADIUS, Math.min(MAX_SEARCH_RADIUS, newRadius));
+    setSearchRadius(clamped);
+  };
+
+  const loadPlacesAtLocation = async (location: Location, category: string) => {
+    if (category && category !== 'all') {
+      await loadPlacesByCategory(category);
+    } else {
+      await loadInitialPlaces(location);
+    }
+  };
+
+  const loadInitialPlaces = async (location: Location) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Popüler mekanları getir
+      // Kullanıcının konumu etrafındaki popüler mekanları getir
       const response = await placesService.getTopRatedPlaces({
-        minRating: 4.0,
+        userLocation: location,
+        radius: searchRadius,
         pageSize: 20
       });
 
       if (response.places && response.places.length > 0) {
         const enhancedPlaces = response.places.map(place => 
-          placesService.enhancePlaceData(place)
+          placesService.enhancePlaceData(place, location)
         );
         setPlaces(enhancedPlaces);
       } else {
-        setError('İstanbul\'da mekan bulunamadı. Lütfen API anahtarınızın doğru olduğunu kontrol edin.');
+        setError('Konumunuz etrafında mekan bulunamadı. Lütfen API anahtarınızın doğru olduğunu kontrol edin.');
       }
     } catch (err) {
       console.error('Error loading places:', err);
@@ -110,6 +223,8 @@ function App() {
   };
 
   const loadPlacesByCategory = async (category: string) => {
+    if (!userLocation) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -117,19 +232,21 @@ function App() {
       let response;
       if (category === 'all') {
         response = await placesService.getTopRatedPlaces({
-          minRating: filter.minRating || 4.0,
+          userLocation,
+          radius: searchRadius,
           pageSize: 20
         });
       } else {
         response = await placesService.getPlacesByCategory(category, {
-          minRating: filter.minRating || 3.5,
+          userLocation,
+          radius: searchRadius,
           pageSize: 20
         });
       }
 
       if (response.places && response.places.length > 0) {
         const enhancedPlaces = response.places.map(place => 
-          placesService.enhancePlaceData(place)
+          placesService.enhancePlaceData(place, userLocation)
         );
         setPlaces(enhancedPlaces);
         setSelectedPlace(null);
@@ -147,15 +264,27 @@ function App() {
 
   const handleFilterChange = (newFilter: PlaceFilter) => {
     setFilter(newFilter);
-    
-    // Kategori değiştiyse yeni veriler getir
-    if (newFilter.category !== filter.category) {
+
+    if (
+      newFilter.category !== filter.category ||
+      newFilter.minRating !== filter.minRating
+    ) {
       loadPlacesByCategory(newFilter.category || 'all');
     }
   };
 
   const handlePlaceSelect = (place: IstanbulPlace) => {
     setSelectedPlace(place);
+  };
+
+  // Kullanıcı haritada boş bir noktaya tıklayınca arama merkezini oraya taşı
+  const handleMapClick = (ev: MapMouseEvent) => {
+    const latLng = ev.detail.latLng;
+    if (!latLng) return;
+    setUserLocation({ latitude: latLng.lat, longitude: latLng.lng });
+    setLocationStatus('manual');
+    setSelectedPlace(null);
+    setError(null);
   };
 
   if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
@@ -185,8 +314,16 @@ function App() {
         <header className="app-header">
           <div className="header-content">
             <div className="header-text">
-              <h1>🏙️ İstanbul'da En Çok Oy Alan Mekanlar</h1>
-              <p>Google Maps verilerine göre İstanbul'daki en popüler ve yüksek puanlı mekanları keşfedin</p>
+              <h1>📍 Konumunuz Etrafındaki En Çok Oy Alan Mekanlar</h1>
+              <p>
+                {locationStatus === 'granted'
+                  ? 'Bulunduğunuz konum etrafındaki popüler ve yüksek puanlı mekanları keşfedin'
+                  : locationStatus === 'requesting'
+                  ? 'Konumunuz alınıyor...'
+                  : locationStatus === 'manual'
+                  ? '📍 Haritada seçilen konum etrafında aranıyor'
+                  : 'Konum izni verilmedi - varsayılan konum kullanılıyor'}
+              </p>
             </div>
             <div className="header-filters">
               <PlaceFilters
@@ -207,7 +344,11 @@ function App() {
               <div className="error-message">
                 <h3>⚠️ Hata</h3>
                 <p>{error}</p>
-                <button onClick={loadInitialPlaces} className="retry-button">
+                <button
+                  onClick={() => userLocation && loadPlacesAtLocation(userLocation, filter.category || 'all')}
+                  className="retry-button"
+                  disabled={!userLocation}
+                >
                   Tekrar Dene
                 </button>
               </div>
@@ -223,19 +364,46 @@ function App() {
           </div>
 
           <div className="app-map">
-            <Map
-              defaultZoom={11}
-              defaultCenter={ISTANBUL_CENTER}
-              mapId="istanbul-places-map"
-              gestureHandling="greedy"
-              clickableIcons={false}
-            >
-              <PlaceMarkers
-                places={filteredPlaces}
-                selectedPlace={selectedPlace}
-                onPlaceSelect={handlePlaceSelect}
-              />
-            </Map>
+            {userLocation ? (
+              <>
+                <Map
+                  defaultZoom={14}
+                  defaultCenter={{ lat: userLocation.latitude, lng: userLocation.longitude }}
+                  mapId="nearby-places-map"
+                  gestureHandling="greedy"
+                  clickableIcons={false}
+                  onClick={handleMapClick}
+                >
+                  <AdvancedMarker
+                    position={{ lat: userLocation.latitude, lng: userLocation.longitude }}
+                  >
+                    <Pin
+                      background={'#34A853'}
+                      glyphColor={'#fff'}
+                      borderColor={'#fff'}
+                      scale={1.3}
+                    />
+                  </AdvancedMarker>
+                  <SearchRadiusCircle center={userLocation} radius={searchRadius} />
+                  <PlaceMarkers
+                    places={filteredPlaces}
+                    selectedPlace={selectedPlace}
+                    onPlaceSelect={handlePlaceSelect}
+                  />
+                  <MapControls
+                    userLocation={userLocation}
+                    radius={searchRadius}
+                    minRadius={MIN_SEARCH_RADIUS}
+                    maxRadius={MAX_SEARCH_RADIUS}
+                    isLocating={locationStatus === 'requesting'}
+                    onRadiusChange={handleRadiusChange}
+                    onGoToCurrentLocation={handleGoToCurrentLocation}
+                  />
+                </Map>
+              </>
+            ) : (
+              <LoadingSpinner />
+            )}
           </div>
         </main>
 

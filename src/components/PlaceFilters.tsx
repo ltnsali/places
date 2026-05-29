@@ -64,10 +64,11 @@ function PlaceFilters({ filter, categories, onFilterChange, isLoading }: PlaceFi
           <label htmlFor="rating-select">Puan:</label>
           <select
             id="rating-select"
-            value={filter.minRating || 4.0}
+            value={filter.minRating ?? 0}
             onChange={(e) => handleMinRatingChange(Number(e.target.value))}
             disabled={isLoading}
           >
+            <option value={0}>Hepsi</option>
             <option value={3.0}>3.0+</option>
             <option value={3.5}>3.5+</option>
             <option value={4.0}>4.0+</option>
@@ -77,13 +78,13 @@ function PlaceFilters({ filter, categories, onFilterChange, isLoading }: PlaceFi
         </div>
 
         <div className="filter-group votes">
-          <label htmlFor="user-rating-count-input">Oy:</label>
+          <label htmlFor="user-rating-count-input">Min Oy:</label>
           <input
             id="user-rating-count-input"
             type="number"
             min="0"
             max="10000"
-            placeholder="100"
+            placeholder="Tümü"
             value={filter.minUserRatingCount || ''}
             onChange={(e) => {
               const value = e.target.value;
