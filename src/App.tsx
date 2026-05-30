@@ -78,6 +78,8 @@ function App() {
     sortBy: 'userRatingCount',
     sortOrder: 'desc'
   });
+  const [mobileView, setMobileView] = useState<'list' | 'map'>('map');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const skipRadiusReload = useRef(true);
 
@@ -275,6 +277,9 @@ function App() {
 
   const handlePlaceSelect = (place: IstanbulPlace) => {
     setSelectedPlace(place);
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches) {
+      setMobileView('map');
+    }
   };
 
   // Kullanıcı haritada boş bir noktaya tıklayınca arama merkezini oraya taşı
@@ -324,8 +329,20 @@ function App() {
                   ? '📍 Haritada seçilen konum etrafında aranıyor'
                   : 'Konum izni verilmedi - varsayılan konum kullanılıyor'}
               </p>
+              <button
+                type="button"
+                className="filter-toggle-mobile"
+                onClick={() => setShowMobileFilters((v) => !v)}
+                aria-expanded={showMobileFilters}
+                aria-controls="header-filters-panel"
+              >
+                {showMobileFilters ? '✕ Filtreleri Kapat' : '🔍 Filtreleri Göster'}
+              </button>
             </div>
-            <div className="header-filters">
+            <div
+              id="header-filters-panel"
+              className={`header-filters${showMobileFilters ? ' mobile-open' : ''}`}
+            >
               <PlaceFilters
                 filter={filter}
                 categories={PLACE_CATEGORIES}
@@ -336,8 +353,29 @@ function App() {
           </div>
         </header>
 
+        <nav className="mobile-view-tabs" role="tablist" aria-label="Görünüm seçimi">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === 'list'}
+            className={`mobile-view-tab${mobileView === 'list' ? ' active' : ''}`}
+            onClick={() => setMobileView('list')}
+          >
+            📋 Liste {filteredPlaces.length > 0 && <span className="tab-count">({filteredPlaces.length})</span>}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === 'map'}
+            className={`mobile-view-tab${mobileView === 'map' ? ' active' : ''}`}
+            onClick={() => setMobileView('map')}
+          >
+            🗺️ Harita
+          </button>
+        </nav>
+
         <main className="app-main">
-          <div className="app-sidebar">
+          <div className={`app-sidebar${mobileView === 'list' ? ' mobile-active' : ''}`}>
             {isLoading && <LoadingSpinner />}
             
             {error && (
@@ -363,7 +401,7 @@ function App() {
             )}
           </div>
 
-          <div className="app-map">
+          <div className={`app-map${mobileView === 'map' ? ' mobile-active' : ''}`}>
             {userLocation ? (
               <>
                 <Map

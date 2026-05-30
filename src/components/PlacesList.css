@@ -204,30 +204,69 @@
 
 /* Responsive design for mobile */
 @media (max-width: 768px) {
+  .places-list-header {
+    padding: 0.6rem 0.85rem;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .places-list-header h3 {
+    font-size: 0.9rem;
+  }
+
   .place-item {
-    padding: 1rem;
+    padding: 0.85rem;
   }
-  
+
+  .place-item.selected {
+    border-left-width: 3px;
+  }
+
   .place-item-header {
-    gap: 0.75rem;
+    gap: 0.7rem;
+    margin-bottom: 0.6rem;
   }
-  
+
   .place-icon {
-    width: 2rem;
-    height: 2rem;
+    width: 2.2rem;
+    height: 2.2rem;
     font-size: 1.2rem;
   }
-  
+
   .place-details {
-    margin-left: 2.75rem;
+    margin-left: 0;
+    margin-top: 0.4rem;
   }
-  
+
   .place-name {
     font-size: 0.95rem;
   }
-  
+
+  .place-address {
+    font-size: 0.82rem;
+  }
+
   .place-meta {
-    flex-direction: column;
-    gap: 0.25rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+  }
+
+  .place-actions {
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .place-link {
+    min-height: 36px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    background: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .place-link:hover,
+  .place-link:active {
+    background: #e2e8f0;
   }
 }
