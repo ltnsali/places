@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/>
+      <stop offset="100%" stop-color="#34A853"/>
+    </linearGradient>
+    <filter id="pinShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="32" stdDeviation="48" flood-color="#0d2042" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="2732" height="2732" fill="url(#bg)"/>
+  <circle cx="900" cy="820" r="980" fill="#ffffff" opacity="0.08"/>
+
+  <!--
+    Pin centered at (1366, 1366). Source path has center near (512, 532) in 1024 viewBox.
+    Pipeline: translate to splash center, then scale 1.8x, then translate path center to origin.
+  -->
+  <g transform="translate(1366 1366) scale(1.8) translate(-512 -532)" filter="url(#pinShadow)">
+    <path d="M512 220
+             c-132 0 -240 108 -240 240
+             0 168 240 384 240 384
+             s240 -216 240 -384
+             c0 -132 -108 -240 -240 -240z"
+          fill="#ffffff"/>
+    <circle cx="512" cy="452" r="92" fill="#4285F4"/>
+  </g>
+</svg>
