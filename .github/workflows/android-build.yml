@@ -97,6 +97,7 @@ jobs:
         working-directory: android
         run: |
           set -euxo pipefail
+          chmod +x ./gradlew
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Locate APK
