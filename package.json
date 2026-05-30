@@ -8,9 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "postcap:sync": "node scripts/fix-spm-paths.mjs",
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run build && npx cap sync android && npx cap open android",
-    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios"
+    "cap:ios": "npm run build && npx cap sync ios && node scripts/fix-spm-paths.mjs && npx cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
