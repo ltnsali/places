@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Yakındaki Mekânlar</string>
+    <string name="title_activity_main">Yakındaki Mekânlar</string>
+    <string name="package_name">com.ltnsali.places</string>
+    <string name="custom_url_scheme">com.ltnsali.places</string>
+</resources>

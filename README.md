@@ -238,3 +238,21 @@ export default tseslint.config([
   },
 ])
 ```
+
+## 📱 Mobil (iOS / Android)
+
+Bu proje [Capacitor](https://capacitorjs.com/) ile native iOS ve Android uygulaması olarak da paketlenir.
+
+### Android (Windows'ta yerel build)
+```bash
+npm run cap:android
+```
+Android Studio açılır. Bir emülatör seç ve Run.
+
+### iOS (Mac yok? Sorun değil — CI üzerinden)
+`main` dalına push ya da Actions sekmesinden manuel tetikle:
+- Workflow: **iOS Build**
+- Artifact: `ios-app-unsigned` (`.ipa`) ve `ios-simulator-app` (`.app`)
+
+TestFlight'a yükleme için Apple Developer hesabı + sertifika gerekir; workflow içindeki TODO bölümüne bakın.
+

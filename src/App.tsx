@@ -7,6 +7,7 @@ import PlaceFilters from './components/PlaceFilters.tsx';
 import LoadingSpinner from './components/LoadingSpinner.tsx';
 import MapControls from './components/MapControls.tsx';
 import SearchRadiusCircle from './components/SearchRadiusCircle.tsx';
+import { getCurrentPosition, PermissionDeniedError } from './services/geolocationService';
 import './App.css';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -123,64 +124,61 @@ function App() {
     }
   }, [places, filter, searchRadius]);
 
-  const requestUserLocation = () => {
-    if (!('geolocation' in navigator)) {
-      setLocationStatus('denied');
-      setError('Tarayıcınız konum servisini desteklemiyor. Varsayılan konum kullanılıyor.');
-      setUserLocation(FALLBACK_LOCATION);
-      return;
-    }
-
+  const requestUserLocation = async () => {
     setLocationStatus('requesting');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationStatus('granted');
-      },
-      (geoError) => {
-        console.warn('Geolocation error:', geoError);
+    try {
+      const position = await getCurrentPosition({
+        highAccuracy: true,
+        timeoutMs: 10000,
+        maxAgeMs: 60000,
+      });
+      setUserLocation({
+        latitude: position.latitude,
+        longitude: position.longitude,
+      });
+      setLocationStatus('granted');
+    } catch (geoError) {
+      console.warn('Geolocation error:', geoError);
+      if (geoError instanceof Error && geoError.message === 'GEOLOCATION_UNSUPPORTED') {
         setLocationStatus('denied');
-        setError('Konum izni alınamadı. Varsayılan konum kullanılıyor.');
+        setError('Tarayıcınız konum servisini desteklemiyor. Varsayılan konum kullanılıyor.');
         setUserLocation(FALLBACK_LOCATION);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+        return;
       }
-    );
+      setLocationStatus('denied');
+      setError('Konum izni alınamadı. Varsayılan konum kullanılıyor.');
+      setUserLocation(FALLBACK_LOCATION);
+    }
   };
 
-  const handleGoToCurrentLocation = () => {
-    if (!('geolocation' in navigator)) {
-      setError('Tarayıcınız konum servisini desteklemiyor.');
-      return;
-    }
-
+  const handleGoToCurrentLocation = async () => {
     setLocationStatus('requesting');
     setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationStatus('granted');
-      },
-      (geoError) => {
-        console.warn('Geolocation error:', geoError);
+    try {
+      const position = await getCurrentPosition({
+        highAccuracy: true,
+        timeoutMs: 10000,
+        maxAgeMs: 30000,
+      });
+      setUserLocation({
+        latitude: position.latitude,
+        longitude: position.longitude,
+      });
+      setLocationStatus('granted');
+    } catch (geoError) {
+      console.warn('Geolocation error:', geoError);
+      if (geoError instanceof Error && geoError.message === 'GEOLOCATION_UNSUPPORTED') {
+        setError('Tarayıcınız konum servisini desteklemiyor.');
+        return;
+      }
+      if (geoError instanceof PermissionDeniedError) {
         setLocationStatus('denied');
         setError('Konum bilgisi alınamadı. Lütfen tarayıcı konum izinlerini kontrol edin.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000
+        return;
       }
-    );
+      setLocationStatus('denied');
+      setError('Konum bilgisi alınamadı. Lütfen tarayıcı konum izinlerini kontrol edin.');
+    }
   };
 
   const handleRadiusChange = (newRadius: number) => {
