@@ -161,6 +161,10 @@ Places servisi sınıfındaki metotları ihtiyaçlarınıza göre güncelleyebil
 npm run build
 ```
 
+### GitHub Pages (mevcut yapı)
+
+`main` branch'ine her push otomatik olarak `Deploy to GitHub Pages` workflow'unu tetikler ve siteyi yayınlar. Repo Settings → Secrets → Actions altında `VITE_GOOGLE_MAPS_API_KEY` secret'ı tanımlı olmalı.
+
 ### Vercel'e Dağıtım
 
 1. Vercel hesabınıza projeyi import edin
@@ -173,6 +177,60 @@ npm run build
 1. `dist` klasörünü Netlify'a upload edin
 2. Environment variables kısmına API anahtarınızı ekleyin
 3. Site ayarlarınızı yapılandırın
+
+---
+
+## 📱 Mobil Uygulama (iOS + Android)
+
+Proje **Capacitor 8** ile aynı kod tabanından native iOS ve Android shell üretir. Web davranışı değişmez; native platformda konum izinleri, splash screen, status bar ve (Android'de) hardware back button native bridge'lerle yönetilir.
+
+### Kimlik
+
+- **App ID:** `com.ltnsali.places`
+- **Display Name:** `Yakındaki Mekânlar`
+- **Web dir:** `dist`
+
+### Lokal Komutlar
+
+```bash
+npm run cap:sync      # build + npx cap sync (Windows backslash fix dahil)
+npm run cap:android   # build + sync + Android Studio'da aç
+npm run cap:ios       # build + sync + Xcode'da aç (yalnızca macOS)
+```
+
+> Windows'ta `cap sync` `ios/App/CapApp-SPM/Package.swift` içine ters slash path yazıyor.
+> `scripts/fix-spm-paths.mjs` postsync hook olarak çalışır ve forward slash'a çevirir.
+
+### Android Build (Windows lokal)
+
+Gereksinimler: JDK 17+ (Microsoft OpenJDK önerilir), Android Studio (içindeki JBR JDK 21 toolchain için kullanılır).
+
+```bash
+npm run build
+npx cap sync android
+cd android
+./gradlew :app:assembleDebug
+```
+
+Çıktı: `android/app/build/outputs/apk/debug/app-debug.apk` (~4.7 MB).
+
+### Android CI (GitHub Actions)
+
+`.github/workflows/android-build.yml` her push'ta Ubuntu runner'da debug APK üretir ve `android-app-debug` artifact'ı olarak yükler. Manuel tetikleme: Actions sekmesinden `Android Build` → `Run workflow`.
+
+### iOS Build (Mac olmadan)
+
+Lokal makinede Xcode gerekmez. `.github/workflows/ios-build.yml` GitHub'ın macOS runner'ında iki paralel job çalıştırır:
+
+- **Build iOS (device, unsigned)** → `ios-app-unsigned` (yaklaşık 800 KB IPA, imzasız — sideload/inceleme için)
+- **Build iOS (simulator, debug)** → `ios-simulator-app` (Simulator'da çalıştırılabilir `.app`)
+
+TestFlight / App Store yüklemesi için Apple Developer hesabı + signing secrets gerekir (workflow'un başındaki TODO bloğunda gerekli adımlar listelenmiş).
+
+### Sonraki Adımlar (signing roadmap)
+
+- **iOS:** Apple Developer membership ($99/yıl), App Store Connect API key + provisioning profile + p12 sertifika ekle, `ios-build.yml` içindeki TestFlight bloğunu aktifleştir.
+- **Android:** Release keystore üret, `KEYSTORE_BASE64` + `KEY_ALIAS` + şifre secret'larını ekle, `android-build.yml` içindeki release/Play Store job'ını aç.
 
 ## 📊 API Kullanımı ve Limitler
 

@@ -22,7 +22,24 @@
 
 ---
 
-## 🔄 İyileştirmeler
+## � Mobil Uygulama (Capacitor 8)
+
+- [x] Capacitor 8 + plugin (geolocation, app, splash-screen, status-bar) entegrasyonu
+- [x] Android shell + lokal `assembleDebug` (4.7 MB APK)
+- [x] iOS shell (SPM, Cap 8) + macOS runner'da unsigned IPA build
+- [x] Native konum izin akışı (`src/services/geolocationService.ts`)
+- [x] Android hardware back button + splash/status bar bridge
+- [x] GitHub Actions: `ios-build.yml` + `android-build.yml`
+- [x] Windows `cap sync` Package.swift backslash auto-fix (`scripts/fix-spm-paths.mjs`)
+- [ ] **App icon** — `Yakındaki Mekânlar` özel ikonu (şu an default Capacitor logosu)
+- [ ] **Splash screen** — özel görsel + tema rengi
+- [ ] **Android release keystore** + Play Store CI job (signing)
+- [ ] **iOS signing** — Apple Developer hesabı + TestFlight upload
+- [ ] `cap:dev` script — live-reload ile cihaza/emulator'a serve etme
+
+---
+
+## �🔄 İyileştirmeler
 
 ### 🗺️ **Harita Özellikleri**
 - [ ] Harita üzerinde mesafe ölçme
