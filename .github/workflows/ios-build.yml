@@ -79,10 +79,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install npm dependencies
@@ -94,38 +94,25 @@ jobs:
         run: npm run build
 
       - name: Capacitor sync (iOS)
+        # Regenerates Package.swift with macOS-correct (forward-slash) paths.
+        # Capacitor 8 uses Swift Package Manager; no Podfile is generated.
         run: npx cap sync ios
 
-      - name: Verify CocoaPods is available
-        run: |
-          set -euxo pipefail
-          if ! command -v pod >/dev/null 2>&1; then
-            echo "CocoaPods not preinstalled; installing..."
-            gem install cocoapods --no-document
-          fi
-          pod --version
-
-      - name: Cache CocoaPods
+      - name: Cache SPM packages
         uses: actions/cache@v4
         with:
           path: |
-            ~/Library/Caches/CocoaPods
-            ios/App/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/App/Podfile.lock') }}
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('ios/App/CapApp-SPM/Package.swift', 'package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: pod install
-        working-directory: ios/App
-        run: |
-          set -euxo pipefail
-          pod install --repo-update
+            ${{ runner.os }}-spm-
 
       - name: Xcode build (unsigned, device)
         run: |
           set -euxo pipefail
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
@@ -181,10 +168,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install npm dependencies
@@ -196,38 +183,25 @@ jobs:
         run: npm run build
 
       - name: Capacitor sync (iOS)
+        # Regenerates Package.swift with macOS-correct (forward-slash) paths.
+        # Capacitor 8 uses Swift Package Manager; no Podfile is generated.
         run: npx cap sync ios
 
-      - name: Verify CocoaPods is available
-        run: |
-          set -euxo pipefail
-          if ! command -v pod >/dev/null 2>&1; then
-            echo "CocoaPods not preinstalled; installing..."
-            gem install cocoapods --no-document
-          fi
-          pod --version
-
-      - name: Cache CocoaPods
+      - name: Cache SPM packages
         uses: actions/cache@v4
         with:
           path: |
-            ~/Library/Caches/CocoaPods
-            ios/App/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/App/Podfile.lock') }}
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-sim-${{ hashFiles('ios/App/CapApp-SPM/Package.swift', 'package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: pod install
-        working-directory: ios/App
-        run: |
-          set -euxo pipefail
-          pod install --repo-update
+            ${{ runner.os }}-spm-sim-
 
       - name: Xcode build (simulator, debug)
         run: |
           set -euxo pipefail
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
